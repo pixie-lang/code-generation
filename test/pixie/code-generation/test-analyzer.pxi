@@ -119,7 +119,8 @@
 
 (deftest test-fn*
   (assert= {:op :fn
-            :form '(fn* [x] x)
+            :form '(fn* foo [x] x)
+            :name 'foo
             :children '[:arities]
             :arities [{:op :fn-body
                        :arity 1
@@ -134,5 +135,16 @@
                                     :idx 0
                                     :name 'x
                                     :form 'x}}}]}
-           (-> (analyze '(fn [x] x))
+           (-> (analyze '(fn foo [x] x))
                remove-env)))
+
+(deftest test-def
+  (assert= {:op :def
+            :name 'foo
+            :form '(def foo 42)
+            :env (new-env)
+            :children [:val]
+            :val {:op :const
+                  :form 42
+                  :env (new-env)}}
+           (analyze '(def foo 42))))

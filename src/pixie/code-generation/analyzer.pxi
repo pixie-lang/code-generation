@@ -57,6 +57,7 @@
     {:op :fn
      :env *env*
      :form form
+     :name name
      :children '[:arities]
      :arities (vals analyzed-bodies)}
     ))
@@ -111,6 +112,15 @@
      :body (binding [*env* new-env]
              (analyze-form `(do ~@body)))}))
 
+(defmethod analyze-seq 'def
+  [[_ nm val :as form]]
+  {:op :def
+   :name nm
+   :form form
+   :env *env*
+   :children [:val]
+   :val (analyze-form val)})
+
 (defmethod analyze-form nil
   [_]
   {:op :const
@@ -148,6 +158,9 @@
     {:op :global
      :env *env*
      :form x}))
+
+
+;; ENV Functions
 
 (defn new-env
   "Creates a new (empty) environment"
