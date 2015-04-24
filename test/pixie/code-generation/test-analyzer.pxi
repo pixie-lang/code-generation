@@ -105,8 +105,12 @@
                    :form '(do x)
                    :children [:statements :ret]
                    :statements []
-                   :ret {:op :global
-                         :form 'x}}}
+                   :ret {:op :binding
+                        :children [:value]
+                        :form 1
+                        :name 'x
+                        :value {:op :const
+                                :form 1}}}}
            (-> (analyze '(let* [x 1]
                                x))
                remove-env)))

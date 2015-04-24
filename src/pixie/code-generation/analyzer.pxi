@@ -96,9 +96,11 @@
 
 (defmethod analyze-form :symbol
   [x]
-  {:op :global
-   :env *env*
-   :form x})
+  (if-let [local (get-in *env* [:locals x])]
+    local
+    {:op :global
+     :env *env*
+     :form x}))
 
 (defn new-env
   "Creates a new (empty) environment"
