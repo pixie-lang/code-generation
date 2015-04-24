@@ -96,6 +96,7 @@
                          x)
             :children [:bindings :body]
             :bindings [{:op :binding
+                        :type :let
                         :children [:value]
                         :form 1
                         :name 'x
@@ -106,12 +107,32 @@
                    :children [:statements :ret]
                    :statements []
                    :ret {:op :binding
-                        :children [:value]
-                        :form 1
-                        :name 'x
-                        :value {:op :const
-                                :form 1}}}}
+                         :type :let
+                         :children [:value]
+                         :form 1
+                         :name 'x
+                         :value {:op :const
+                                 :form 1}}}}
            (-> (analyze '(let* [x 1]
                                x))
                remove-env)))
 
+(deftest test-fn*
+  (assert= {:op :fn
+            :form '(fn* [x] x)
+            :children '[:arities]
+            :arities [{:op :fn-body
+                       :arity 1
+                       :args '[x]
+                       :children '[:body]
+                       :body {:op :do
+                              :form '(do x)
+                              :children [:statements :ret]
+                              :statements []
+                              :ret {:op :binding
+                                    :type :arg
+                                    :idx 0
+                                    :name 'x
+                                    :form 'x}}}]}
+           (-> (analyze '(fn [x] x))
+               remove-env)))

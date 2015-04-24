@@ -39,6 +39,52 @@
    :then (analyze-form then)
    :else (analyze-form else)})
 
+
+(defmethod analyze-seq 'fn*
+  [[_ & body :as form]]
+  (let [[name body] (if (symbol? (first body))
+                      [(first body)
+                       (next body)]
+                      [(gensym "fn_")
+                       body])
+        arities (if (vector? (first body))
+                  [body]
+                  body)
+        analyzed-bodies (reduce
+                         analyze-fn-body
+                         {}
+                         arities)]
+    {:op :fn
+     :env *env*
+     :form form
+     :children '[:arities]
+     :arities (vals analyzed-bodies)}
+    ))
+
+(defn analyze-fn-body [acc [args & body]]
+  ; TODO: Add support for variadic fns
+  (let [arity (count args)
+        new-env (reduce
+                 (fn [acc idx]
+                   (let [arg-name (nth args idx)]
+                     (assoc-in acc [:locals arg-name] {:op :binding
+                                                       :type :arg
+                                                       :idx idx
+                                                       :name arg-name
+                                                       :form arg-name
+                                                       :env *env*})))
+                 *env*
+                 (range (count args)))]
+    (assert (not (acc arity)) (str "Duplicate arity for " (cons args body)))
+    (assoc acc arity {:op :fn-body
+                      :env *env*
+                      :arity arity
+                      :args args
+                      :children '[:body]
+                      :body (binding [*env* new-env]
+                              (analyze-form (cons 'do body)))})))
+
+
 (defmethod analyze-seq 'let*
   [[_ bindings & body :as form]]
   (assert (even? (count bindings)) "Let requires an even number of bindings")
@@ -47,6 +93,7 @@
                             (fn [[new-env bindings] [name binding-form]]
                               (let [binding-ast (binding [*env* new-env]
                                                   {:op :binding
+                                                   :type :let
                                                    :children [:value]
                                                    :form binding-form
                                                    :env *env*
