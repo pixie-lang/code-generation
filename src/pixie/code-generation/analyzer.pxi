@@ -39,6 +39,31 @@
    :then (analyze-form then)
    :else (analyze-form else)})
 
+(defmethod analyze-seq 'let*
+  [[_ bindings & body :as form]]
+  (assert (even? (count bindings)) "Let requires an even number of bindings")
+  (let [parted (partition 2 bindings)
+        [new-env bindings] (reduce
+                            (fn [[new-env bindings] [name binding-form]]
+                              (let [binding-ast (binding [*env* new-env]
+                                                  {:op :binding
+                                                   :children [:value]
+                                                   :form binding-form
+                                                   :env *env*
+                                                   :name name
+                                                   :value (analyze-form binding-form)})]
+                                [(assoc-in new-env [:locals name] binding-ast)
+                                 (conj bindings binding-ast)]))
+                            [*env* []]
+                            parted)]
+    {:op :let
+     :form form
+     :children [:bindings :body]
+     :bindings bindings
+     :env *env*
+     :body (binding [*env* new-env]
+             (analyze-form `(do ~@body)))}))
+
 (defmethod analyze-form nil
   [_]
   {:op :const
@@ -46,13 +71,17 @@
    :form nil})
 
 (defmethod analyze-seq :default
-  [[sym & args]]
+  [[sym & args :as form]]
   (let [resolved (resolve-in (the-ns (:ns *env*)) sym)]
     (if (and resolved
              (macro? @resolved))
       (analyze-form (apply @resolved args))
-      (throw [:analyzeError
-              (str "Don't know how to analyze " sym args)]))))
+      {:op :invoke
+       :children '[:fn :args]
+       :form form
+       :env *env*
+       :fn (analyze-form sym)
+       :args (mapv analyze-form args)})))
 
 
 (defmethod analyze-form :number
@@ -64,6 +93,12 @@
 (defmethod analyze-form :seq
   [x]
   (analyze-seq x))
+
+(defmethod analyze-form :symbol
+  [x]
+  {:op :global
+   :env *env*
+   :form x})
 
 (defn new-env
   "Creates a new (empty) environment"

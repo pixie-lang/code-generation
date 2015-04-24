@@ -74,3 +74,40 @@
                    :env (new-env)}}
            (analyze '(when 1 2))))
 
+(deftest test-fn-invoke
+  (assert= {:op :invoke
+            :children [:fn :args]
+            :form '(+ 1 2)
+            :env (new-env)
+            :fn {:op :global
+                 :env (new-env)
+                 :form '+}
+            :args [{:op :const
+                    :form 1
+                    :env (new-env)}
+                   {:op :const
+                    :form 2
+                    :env (new-env)}]}
+           (analyze '(+ 1 2))))
+
+(deftest test-let*
+  (assert= {:op :let
+            :form '(let* [x 1]
+                         x)
+            :children [:bindings :body]
+            :bindings [{:op :binding
+                        :children [:value]
+                        :form 1
+                        :name 'x
+                        :value {:op :const
+                                :form 1}}]
+            :body {:op :do
+                   :form '(do x)
+                   :children [:statements :ret]
+                   :statements []
+                   :ret {:op :global
+                         :form 'x}}}
+           (-> (analyze '(let* [x 1]
+                               x))
+               remove-env)))
+
