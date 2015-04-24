@@ -1,4 +1,5 @@
 {:name pixie-code-generation
  :version "0.1.0-alpha"
  :description "Playing around with compiling pixie bytecode to other things"
- :dependencies []}
+ :dependencies []
+ :test-paths ["test/"]}
